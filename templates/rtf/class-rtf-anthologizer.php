@@ -473,8 +473,21 @@ class RtfAnthologizer extends Anthologizer {
     // Now replace HTML entities with RTF \uxxx notation
     // Code derived from http://php.net/manual/en/function.html-entity-decode.php
 
-    $data = preg_replace('~&#x([0-9a-f]+);~ei', '"\\u" . hexdec("\\1")', $data);  // Hex
-    $data = preg_replace('~&#([0-9]+);~e',      '"\\u\\1"',              $data);  // Dec
+    // Convert hex entities to RTF unicode notation
+    $data = preg_replace_callback( '~&#x([0-9a-f]+);~i',
+        function($matches) {
+            return '\\u' . hexdec($matches[1]);
+        },
+        $data
+    );
+
+    // Convert decimal entities to RTF unicode notation
+    $data = preg_replace_callback('~&#([0-9]+);~',
+        function($matches) {
+            return '\\u' . $matches[1];
+        },
+        $data
+    );
 
     // Replace literal entities
 
