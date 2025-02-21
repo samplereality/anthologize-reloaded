@@ -60,6 +60,9 @@ To add your own cover images, just upload them to the anthologize/templates/epub
 
 == Changelog ==
 
+= 0.8.3 =
+* Fixed security vulnerability when deleting or creating projects
+
 = 0.8.2 =
 * Improved PHP 8.1+ compatibility
 
