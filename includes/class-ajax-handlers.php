@@ -1,15 +1,20 @@
 <?php
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 
-	require_once 'class-project-organizer.php';
+	require_once __DIR__ . '/class-project-organizer.php';
 
 	class Anthologize_Ajax_Handlers {
 
-		var $project_organizer = null;
+		/** @var Anthologize_Project_Organizer|null */
+		private $project_organizer = null;
 
-		function __construct() {
-			$project_id = ( isset( $_POST['project_id'] ) ) ? $_POST['project_id'] : 0;
+		public function __construct() {
+			$project_id = isset( $_POST['project_id'] ) ? absint( $_POST['project_id'] ) : 0;
 
 			$this->project_organizer = new Anthologize_Project_Organizer( $project_id );
 
@@ -24,34 +29,24 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 			add_action( 'wp_ajax_include_all_comments', array( $this, 'include_all_comments' ) );
 		}
 
-		function fetch_tags() {
-			$tags = get_tags();
+		/**
+		 * Verify the AJAX nonce and check user capability.
+		 *
+		 * @param string $capability The capability to check. Default 'edit_pages'.
+		 */
+		private function verify_request( $capability = 'edit_pages' ) {
+			check_ajax_referer( 'anthologize_ajax', 'nonce' );
 
-			$the_tags = array();
-			foreach ( $tags as $tag ) {
-				$the_tags[ $tag->slug ] = $tag->name;
+			if ( ! current_user_can( $capability ) ) {
+				wp_send_json_error( array( 'message' => __( 'You do not have permission to perform this action.', 'anthologize' ) ), 403 );
 			}
-
-			print( json_encode( $the_tags ) );
-			die();
 		}
 
-		function fetch_cats() {
-			$cats = get_categories();
+		public function get_filterby_terms() {
+			$this->verify_request();
 
-			$the_cats = array();
-			foreach ( $cats as $cat ) {
-				$the_cats[ $cat->term_id ] = $cat->name;
-			}
-
-			print( json_encode( $the_cats ) );
-			die();
-		}
-
-		function get_filterby_terms() {
-			$filtertype = $_POST['filtertype'];
-
-			$terms = array();
+			$filtertype = isset( $_POST['filtertype'] ) ? sanitize_key( $_POST['filtertype'] ) : '';
+			$terms      = array();
 
 			switch ( $filtertype ) {
 				case 'category':
@@ -63,8 +58,10 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 
 				case 'tag':
 					$tags = get_tags();
-					foreach ( $tags as $tag ) {
-						$terms[ $tag->slug ] = $tag->name;
+					if ( is_array( $tags ) ) {
+						foreach ( $tags as $tag ) {
+							$terms[ $tag->slug ] = $tag->name;
+						}
 					}
 					break;
 
@@ -75,14 +72,15 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 
 			$terms = apply_filters( 'anth_get_posts_by', $terms, $filtertype );
 
-			print( json_encode( $terms ) );
-			die();
+			wp_send_json_success( $terms );
 		}
 
-		function get_posts_by() {
-			$filterby = $_POST['filterby'];
+		public function get_posts_by() {
+			$this->verify_request();
 
-			$submitted_orderby = isset( $_POST['orderby'] ) ? $_POST['orderby'] : 'title_asc';
+			$filterby = isset( $_POST['filterby'] ) ? sanitize_key( $_POST['filterby'] ) : '';
+
+			$submitted_orderby = isset( $_POST['orderby'] ) ? sanitize_key( $_POST['orderby'] ) : 'title_asc';
 
 			$orderby_settings = Anthologize_Project_Organizer::get_orderby_settings( $submitted_orderby );
 
@@ -104,13 +102,13 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 
 					if ( isset( $_POST['startdate'] ) ) {
 						$date_query[] = array(
-							'after' => wp_unslash( $_POST['startdate'] ),
+							'after' => sanitize_text_field( wp_unslash( $_POST['startdate'] ) ),
 						);
 					}
 
 					if ( isset( $_POST['enddate'] ) ) {
 						$date_query[] = array(
-							'before' => wp_unslash( $_POST['enddate'] ),
+							'before' => sanitize_text_field( wp_unslash( $_POST['enddate'] ) ),
 						);
 					}
 
@@ -121,21 +119,21 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 					break;
 
 				case 'tag':
-					$args['tag'] = $_POST['term'];
+					$args['tag'] = isset( $_POST['term'] ) ? sanitize_text_field( wp_unslash( $_POST['term'] ) ) : '';
 					break;
 
 				case 'category':
-					$args['cat'] = $_POST['term'];
+					$args['cat'] = isset( $_POST['term'] ) ? absint( $_POST['term'] ) : 0;
 					break;
 
 				case 'post_type':
-					if ( $_POST['term'] != '' ) {
-						$args['post_type'] = $_POST['term'];
+					$term = isset( $_POST['term'] ) ? sanitize_key( $_POST['term'] ) : '';
+					if ( '' !== $term ) {
+						$args['post_type'] = $term;
 					}
 					break;
 			}
 
-			// Allow plugins to modify the query_post arguments
 			$posts = new WP_Query( apply_filters( 'anth_get_posts_by_query', $args, $filterby ) );
 
 			$the_posts = array();
@@ -150,89 +148,88 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 				$the_posts[] = $post_data;
 			}
 
+			wp_reset_postdata();
+
 			$the_posts = apply_filters( 'anth_get_posts_by', $the_posts, $filterby );
 
-			print( json_encode( $the_posts ) );
-
-			die();
+			wp_send_json_success( $the_posts );
 		}
 
-		/**
-		 * @todo Merge this with place_items. No reason for two functions
-		 */
-		function place_item() {
+		public function place_item() {
+			$this->verify_request();
+
 			global $wpdb;
 
-			$project_id     = $_POST['project_id'];
-			$post_id        = $_POST['post_id'];
-			$dest_part_id   = $_POST['dest_id'];
-			$dest_seq       = stripslashes( $_POST['dest_seq'] );
-			$dest_seq_array = json_decode( $dest_seq, $assoc = true );
+			$project_id     = absint( $_POST['project_id'] );
+			$post_id        = absint( $_POST['post_id'] );
+			$dest_part_id   = absint( $_POST['dest_id'] );
+			$dest_seq       = wp_unslash( $_POST['dest_seq'] );
+			$dest_seq_array = json_decode( $dest_seq, true );
 			if ( null === $dest_seq_array ) {
-				header( 'HTTP/1.1 500 Internal Server Error' );
-				die();
+				wp_send_json_error( array( 'message' => __( 'Invalid sequence data.', 'anthologize' ) ), 400 );
 			}
 
-			if ( 'true' === $_POST['new_post'] ) {
+			$dest_seq_array = array_map( 'absint', $dest_seq_array );
+
+			if ( 'true' === sanitize_text_field( $_POST['new_post'] ) ) {
 				$new_item      = true;
 				$src_part_id   = false;
 				$src_seq_array = false;
 			} else {
 				$new_item      = false;
-				$src_part_id   = $_POST['src_id'];
-				$src_seq       = stripslashes( $_POST['src_seq'] );
-				$src_seq_array = json_decode( $src_seq, $assoc = true );
+				$src_part_id   = absint( $_POST['src_id'] );
+				$src_seq       = wp_unslash( $_POST['src_seq'] );
+				$src_seq_array = json_decode( $src_seq, true );
 				if ( null === $src_seq_array ) {
-					header( 'HTTP/1.1 500 Internal Server Error' );
-					die();
+					wp_send_json_error( array( 'message' => __( 'Invalid sequence data.', 'anthologize' ) ), 400 );
 				}
+				$src_seq_array = array_map( 'absint', $src_seq_array );
 			}
 
 			$insert_result_id = $this->project_organizer->insert_item( $project_id, $post_id, $new_item, $dest_part_id, $src_part_id, $dest_seq_array, $src_seq_array );
 
 			if ( false === $insert_result_id ) {
-				header( 'HTTP/1.1 500 Internal Server Error' );
-				die();
-			} else {
-				if ( true == $new_item ) {
-					$dest_seq_array[ $insert_result_id ] = $dest_seq_array['new_new_new'];
-					unset( $dest_seq_array['new_new_new'] );
-				}
-
-				$this->project_organizer->rearrange_items( $dest_seq_array );
-
-				// Get the comment count for the original item
-				$comment_count = $wpdb->get_var( $wpdb->prepare( "SELECT comment_count FROM $wpdb->posts WHERE ID = %s", $post_id ) );
-
-				// Assemble the array to return
-				$insert_result = array(
-					array(
-						'post_id'       => $insert_result_id,
-						'comment_count' => $comment_count,
-					),
-				);
-
-				echo json_encode( $insert_result );
+				wp_send_json_error( array( 'message' => __( 'Failed to insert item.', 'anthologize' ) ), 500 );
 			}
 
-			die();
+			if ( true === $new_item ) {
+				$dest_seq_array[ $insert_result_id ] = isset( $dest_seq_array['new_new_new'] ) ? $dest_seq_array['new_new_new'] : 0;
+				unset( $dest_seq_array['new_new_new'] );
+			}
+
+			$this->project_organizer->rearrange_items( $dest_seq_array );
+
+			$comment_count = $wpdb->get_var( $wpdb->prepare( "SELECT comment_count FROM $wpdb->posts WHERE ID = %d", $post_id ) );
+
+			$insert_result = array(
+				array(
+					'post_id'       => $insert_result_id,
+					'comment_count' => (int) $comment_count,
+				),
+			);
+
+			wp_send_json_success( $insert_result );
 		}
 
-		function place_items() {
+		public function place_items() {
+			$this->verify_request();
+
 			global $wpdb;
 
-			$project_id = $_POST['project_id'];
+			$project_id = absint( $_POST['project_id'] );
 
-			$post_ids       = $_POST['post_ids'];
-			$post_ids       = stripslashes( $_POST['post_ids'] );
-			$post_ids_array = json_decode( $post_ids, $assoc = true );
+			$post_ids       = wp_unslash( $_POST['post_ids'] );
+			$post_ids_array = json_decode( $post_ids, true );
 
-			$dest_part_id   = $_POST['dest_id'];
-			$dest_seq       = stripslashes( $_POST['dest_seq'] );
-			$dest_seq_array = json_decode( $dest_seq, $assoc = true );
+			if ( ! is_array( $post_ids_array ) ) {
+				wp_send_json_error( array( 'message' => __( 'Invalid post IDs.', 'anthologize' ) ), 400 );
+			}
+
+			$dest_part_id   = absint( $_POST['dest_id'] );
+			$dest_seq       = wp_unslash( $_POST['dest_seq'] );
+			$dest_seq_array = json_decode( $dest_seq, true );
 			if ( null === $dest_seq_array ) {
-				header( 'HTTP/1.1 500 Internal Server Error' );
-				die();
+				wp_send_json_error( array( 'message' => __( 'Invalid sequence data.', 'anthologize' ) ), 400 );
 			}
 
 			$new_item      = true;
@@ -241,117 +238,102 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 
 			$ret_ids = array();
 			foreach ( $post_ids_array as $position => $post_id ) {
-				$pidarray = explode( '-', $post_id );
-				$post_id  = array_pop( $pidarray );
-				// $post_id = str_replace("added-", "", $post_id);
+				$pidarray = explode( '-', sanitize_text_field( $post_id ) );
+				$post_id  = absint( array_pop( $pidarray ) );
+
 				$insert_result = $this->project_organizer->insert_item( $project_id, $post_id, $new_item, $dest_part_id, $src_part_id, $dest_seq_array, $src_seq_array );
 				if ( false === $insert_result ) {
-					header( 'HTTP/1.1 500 Internal Server Error' );
-					die();
-				} else {
-					$dest_seq_array[ $insert_result ] = $dest_seq_array[ $post_id ];
-					unset( $dest_seq_array[ $post_id ] );
-
-					// Get the comment count for the original item
-					$comment_count = $wpdb->get_var( $wpdb->prepare( "SELECT comment_count FROM $wpdb->posts WHERE ID = %s", $post_id ) );
-
-					// Assemble the array to return
-					$ret_ids[] = array(
-						'post_id'       => $insert_result,
-						'comment_count' => $comment_count,
-						'original_id'   => $post_id,
-					);
+					wp_send_json_error( array( 'message' => __( 'Failed to insert item.', 'anthologize' ) ), 500 );
 				}
+
+				$dest_seq_array[ $insert_result ] = isset( $dest_seq_array[ $post_id ] ) ? $dest_seq_array[ $post_id ] : 0;
+				unset( $dest_seq_array[ $post_id ] );
+
+				$comment_count = $wpdb->get_var( $wpdb->prepare( "SELECT comment_count FROM $wpdb->posts WHERE ID = %d", $post_id ) );
+
+				$ret_ids[] = array(
+					'post_id'       => $insert_result,
+					'comment_count' => (int) $comment_count,
+					'original_id'   => $post_id,
+				);
 			}
 			$this->project_organizer->rearrange_items( $dest_seq_array );
 
-			print json_encode( $ret_ids );
-			die();
+			wp_send_json_success( $ret_ids );
 		}
 
-		function merge_items() {
-			$project_id = $_POST['project_id'];
-			$post_id    = $_POST['post_id'];
+		public function merge_items() {
+			$this->verify_request();
+
+			$project_id = absint( $_POST['project_id'] );
+			$post_id    = absint( $_POST['post_id'] );
 
 			if ( is_array( $_POST['child_post_ids'] ) ) {
-				$child_post_ids = $_POST['child_post_ids'];
+				$child_post_ids = array_map( 'absint', $_POST['child_post_ids'] );
 			} else {
-				$child_post_ids = array( $_POST['child_post_ids'] );
+				$child_post_ids = array( absint( $_POST['child_post_ids'] ) );
 			}
 
-			$new_seq = stripslashes( $_POST['new_seq'] );
-
-			$new_seq_array = json_decode( $new_seq, $assoc = true );
+			$new_seq       = wp_unslash( $_POST['new_seq'] );
+			$new_seq_array = json_decode( $new_seq, true );
 			if ( null === $new_seq_array ) {
-				header( 'HTTP/1.1 500 Internal Server Error' );
-				die();
+				wp_send_json_error( array( 'message' => __( 'Invalid sequence data.', 'anthologize' ) ), 400 );
 			}
 
 			$append_result = $this->project_organizer->append_children( $post_id, $child_post_ids );
 
 			if ( false === $append_result ) {
-				header( 'HTTP/1.1 500 Internal Server Error' );
-				die();
+				wp_send_json_error( array( 'message' => __( 'Failed to merge items.', 'anthologize' ) ), 500 );
 			}
 
-			$reseq_result = $this->project_organizer->rearrange_items( $new_seq_array );
+			$this->project_organizer->rearrange_items( $new_seq_array );
 
-			// TODO: What to do? If the merge succeeded but the resort failed, ugh...
-			/*
-			if (false === $reseq_result) {
-			}*/
-
-			die();
+			wp_send_json_success();
 		}
 
-		function fetch_project_meta() {
-			$result     = '';
-			$project_id = $_POST['proj_id'];
+		public function fetch_project_meta() {
+			$this->verify_request();
 
-			if ( $options = get_post_meta( $project_id, 'anthologize_meta', true ) ) {
-				$result = json_encode( $options );
+			$project_id = absint( $_POST['proj_id'] );
+
+			if ( ! $project_id ) {
+				wp_send_json_error( array( 'message' => __( 'Invalid project ID.', 'anthologize' ) ), 400 );
+			}
+
+			$options = get_post_meta( $project_id, 'anthologize_meta', true );
+
+			if ( $options ) {
+				wp_send_json_success( $options );
 			} else {
-				$result = json_encode( 'none' );
+				wp_send_json_success( 'none' );
 			}
-
-			print( json_encode( $result ) );
-
-			die();
 		}
 
-		/**
-		 * The handler for the get_item_comments ajax action
-		 *
-		 * Returns the comments associated with the provided post_id. Called when the 'Comments'
-		 * link near an item on the project organizer screen is clicked.
-		 *
-		 * @package Anthologize
-		 * @since 0.6
-		 */
-		function get_item_comments() {
-			$item_id = ! empty( $_POST['post_id'] ) ? $_POST['post_id'] : false;
+		public function get_item_comments() {
+			$this->verify_request();
 
-			// The item_id tends to be a CSS selector. We have to break it up.
-			if ( ! is_int( $item_id ) ) {
+			$item_id = ! empty( $_POST['post_id'] ) ? sanitize_text_field( wp_unslash( $_POST['post_id'] ) ) : false;
+
+			if ( ! is_numeric( $item_id ) ) {
 				$i       = explode( '-', $item_id );
-				$item_id = $i[1];
+				$item_id = isset( $i[1] ) ? absint( $i[1] ) : 0;
+			} else {
+				$item_id = absint( $item_id );
 			}
 
 			if ( ! $item_id ) {
-				return false;
+				wp_send_json_error( array( 'message' => __( 'Invalid item ID.', 'anthologize' ) ), 400 );
 			}
 
-			// Get the original post id
 			$anth_meta        = get_post_meta( $item_id, 'anthologize_meta', true );
-			$original_post_id = isset( $anth_meta['original_post_id'] ) ? $anth_meta['original_post_id'] : false;
+			$original_post_id = isset( $anth_meta['original_post_id'] ) ? absint( $anth_meta['original_post_id'] ) : false;
 
 			if ( ! $original_post_id ) {
-				return false;
+				wp_send_json_error( array( 'message' => __( 'Original post not found.', 'anthologize' ) ), 404 );
 			}
 
 			$comments = get_comments( array( 'post_id' => $original_post_id ) );
 
-			// Mark certain comments as already included, so their checkboxes get checked
 			foreach ( $comments as $comment ) {
 				if ( ! empty( $anth_meta['included_comments'] ) && in_array( $comment->comment_ID, $anth_meta['included_comments'] ) ) {
 					$comment->is_included = 1;
@@ -361,44 +343,30 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 			}
 
 			if ( empty( $comments ) ) {
-				$comment = array(
+				wp_send_json_success( array(
 					'empty' => '1',
 					'text'  => __( 'This post has no comments.', 'anthologize' ),
-				);
+				) );
 			}
 
-			echo( json_encode( $comments ) );
-			die();
+			wp_send_json_success( $comments );
 		}
 
-		/**
-		 * The handler for the include_comments ajax action
-		 *
-		 * Called when the Save button is clicked on the Comments slider of the project organizer
-		 * screen. Saves the submitted comments to the anthologize_meta postmeta.
-		 *
-		 * @package Anthologize
-		 * @since 0.6
-		 */
-		function include_comments() {
-			if ( ! empty( $_POST['comment_id'] ) ) {
-				$comment_id = $_POST['comment_id'];
-			}
+		public function include_comments() {
+			$this->verify_request();
 
-			if ( ! empty( $_POST['post_id'] ) ) {
-				$post_id = $_POST['post_id'];
-			}
+			$comment_id = ! empty( $_POST['comment_id'] ) ? absint( $_POST['comment_id'] ) : 0;
+			$post_id    = ! empty( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
 
-			$action = ! empty( $_POST['check_action'] ) && 'add' == $_POST['check_action'] ? 'add' : 'remove';
+			$action = ! empty( $_POST['check_action'] ) && 'add' === sanitize_key( $_POST['check_action'] ) ? 'add' : 'remove';
 
 			if ( empty( $post_id ) || empty( $comment_id ) ) {
-				die(); // better error reporting?
+				wp_send_json_error( array( 'message' => __( 'Missing required data.', 'anthologize' ) ), 400 );
 			}
 
 			require_once ANTHOLOGIZE_INCLUDES_PATH . 'class-comments.php';
 			$comments = new Anthologize_Comments( $post_id );
 
-			// Our next action depends on $action
 			switch ( $action ) {
 				case 'add':
 					$comments->import_comment( $comment_id );
@@ -410,38 +378,24 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 					break;
 			}
 
-			// Resave the meta
 			$comments->update_included_comments();
 
-			// Return the comment array to show that we were successful
-			echo json_encode( array_values( $comments->included_comments ) );
-			die();
+			wp_send_json_success( array_values( $comments->included_comments ) );
 		}
 
-		/**
-		 * The handler for the include_comments ajax action
-		 *
-		 * Called when the Save button is clicked on the Comments slider of the project organizer
-		 * screen. Saves the submitted comments to the anthologize_meta postmeta.
-		 *
-		 * @package Anthologize
-		 * @since 0.6
-		 */
-		function include_all_comments() {
-			if ( ! empty( $_POST['post_id'] ) ) {
-				$post_id = $_POST['post_id'];
-			}
+		public function include_all_comments() {
+			$this->verify_request();
 
-			$action = ! empty( $_POST['check_action'] ) && 'remove' == $_POST['check_action'] ? 'remove' : 'add';
+			$post_id = ! empty( $_POST['post_id'] ) ? absint( $_POST['post_id'] ) : 0;
+			$action  = ! empty( $_POST['check_action'] ) && 'remove' === sanitize_key( $_POST['check_action'] ) ? 'remove' : 'add';
 
-			if ( empty( $post_id ) || empty( $action ) ) {
-				die(); // better error reporting?
+			if ( empty( $post_id ) ) {
+				wp_send_json_error( array( 'message' => __( 'Missing required data.', 'anthologize' ) ), 400 );
 			}
 
 			require_once ANTHOLOGIZE_INCLUDES_PATH . 'class-comments.php';
 			$comments = new Anthologize_Comments( $post_id );
 
-			// Our next action depends on $action
 			switch ( $action ) {
 				case 'add':
 					$comments->import_all_comments();
@@ -453,12 +407,9 @@ if ( ! class_exists( 'Anthologize_Ajax_Handlers' ) ) :
 					break;
 			}
 
-			// Resave the meta
 			$comments->update_included_comments();
 
-			// Return the comment array to show that we were successful
-			echo json_encode( array_values( $comments->included_comments ) );
-			die();
+			wp_send_json_success( array_values( $comments->included_comments ) );
 		}
 	}
 

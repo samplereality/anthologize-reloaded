@@ -1,13 +1,24 @@
 <?php
 
-// This plugin file contains miscellaneous Anthologize functions that are needed in the global scope. Todo: Clean up.
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
 
+/**
+ * Save project metadata from an export session.
+ *
+ * Uses an allowlist of known keys to prevent arbitrary data from being saved.
+ */
 function anthologize_save_project_meta() {
 	if ( ! empty( $_POST['project_id'] ) ) {
-		$project_id = $_POST['project_id'];
+		$project_id = absint( $_POST['project_id'] );
 	} elseif ( ! empty( $_GET['project_id'] ) ) {
-		$project_id = $_GET['project_id'];
+		$project_id = absint( $_GET['project_id'] );
 	} else {
+		return;
+	}
+
+	if ( ! $project_id ) {
 		return;
 	}
 
@@ -16,24 +27,30 @@ function anthologize_save_project_meta() {
 		$project_meta = array();
 	}
 
-	foreach ( $_POST as $key => $value ) {
+	$allowed_keys = array(
+		'cyear', 'cname', 'ctype', 'cctype', 'edition', 'authors',
+		'post-title', 'dedication', 'acknowledgements', 'filetype',
+		'page-size', 'font-size', 'font-face', 'break-parts',
+		'break-items', 'colophon', 'do-shortcodes', 'subtitle',
+	);
 
-		if ( $key == 'project_id' || $key == 'submit' ) {
-			continue;
+	foreach ( $allowed_keys as $key ) {
+		if ( isset( $_POST[ $key ] ) ) {
+			$project_meta[ $key ] = sanitize_text_field( wp_unslash( $_POST[ $key ] ) );
 		}
-
-		$project_meta[ $key ] = $value;
 	}
 
 	update_post_meta( $project_id, 'anthologize_meta', $project_meta );
 }
 
 function anthologize_get_project_parts( $projectId ) {
-
 	$projectParts = new WP_Query(
 		array(
-			'post_parent' => $projectId,
-			'post_type'   => 'anth_part',
+			'post_parent'    => absint( $projectId ),
+			'post_type'      => 'anth_part',
+			'posts_per_page' => -1,
+			'orderby'        => 'menu_order',
+			'order'          => 'ASC',
 		)
 	);
 
@@ -43,8 +60,11 @@ function anthologize_get_project_parts( $projectId ) {
 function anthologize_get_part_items( $partId ) {
 	$partItems = new WP_Query(
 		array(
-			'post_parent' => $partId,
-			'post_type'   => 'anth_library_item',
+			'post_parent'    => absint( $partId ),
+			'post_type'      => 'anth_library_item',
+			'posts_per_page' => -1,
+			'orderby'        => 'menu_order',
+			'order'          => 'ASC',
 		)
 	);
 
@@ -57,6 +77,7 @@ function anthologize_get_part_items( $partId ) {
  * @since 0.8.0
  *
  * @param int $item_id Project, part, or item ID.
+ * @return array
  */
 function anthologize_get_item_author_names( $item_id ) {
 	$names = array();
@@ -71,38 +92,38 @@ function anthologize_get_item_author_names( $item_id ) {
 		case 'anth_project':
 			$part_query = new WP_Query(
 				array(
-					'post_type'     => 'anth_part',
-					'post_per_page' => -1,
-					'showposts'     => -1,
-					'fields'        => 'ids',
-					'post_parent'   => $item_id,
+					'post_type'      => 'anth_part',
+					'posts_per_page' => -1,
+					'fields'         => 'ids',
+					'post_parent'    => $item_id,
 				)
 			);
 
-			foreach ( $part_query->posts as $post ) {
-				$item_names = array_merge( $item_names, anthologize_get_item_author_names( $post ) );
+			foreach ( $part_query->posts as $part_post ) {
+				$item_names = array_merge( $item_names, anthologize_get_item_author_names( $part_post ) );
 			}
 			break;
 
 		case 'anth_part':
 			$item_query = new WP_Query(
 				array(
-					'post_type'     => 'anth_library_item',
-					'post_per_page' => -1,
-					'showposts'     => -1,
-					'fields'        => 'ids',
-					'post_parent'   => $item_id,
+					'post_type'      => 'anth_library_item',
+					'posts_per_page' => -1,
+					'fields'         => 'ids',
+					'post_parent'    => $item_id,
 				)
 			);
 
-			foreach ( $item_query->posts as $post ) {
-				$item_names = array_merge( $item_names, anthologize_get_item_author_names( $post ) );
+			foreach ( $item_query->posts as $item_post ) {
+				$item_names = array_merge( $item_names, anthologize_get_item_author_names( $item_post ) );
 			}
-
 			break;
 
 		case 'anth_library_item':
 			$item_names = get_post_meta( $item_id, 'author_name_array', true );
+			if ( ! is_array( $item_names ) ) {
+				$item_names = array();
+			}
 			break;
 	}
 
@@ -118,14 +139,14 @@ function anthologize_display_project_content( $projectId ) {
 	foreach ( $parts as $part ) {
 		echo '<h2>' . esc_html( $part->post_title ) . '</h2>' . "\n";
 		echo '<div class="anthologize-part-content">' . "\n";
-		echo $item->post_content . "\n";
+		echo wp_kses_post( $part->post_content ) . "\n";
 		echo '</div>' . "\n";
 
 		$items = anthologize_get_part_items( $part->ID );
 		foreach ( $items as $item ) {
 			echo '<h3>' . esc_html( $item->post_title ) . '</h3>' . "\n";
 			echo '<div class="anthologize-item-content">';
-			echo $item->post_content;
+			echo wp_kses_post( $item->post_content );
 			echo '</div>';
 		}
 	}
@@ -133,22 +154,23 @@ function anthologize_display_project_content( $projectId ) {
 
 function anthologize_filter_post_content( $content ) {
 	global $post;
-	if ( $post->post_type == 'anth_project' ) {
-		$content .= anthologize_display_project_content( get_the_ID() );
+	if ( $post && 'anth_project' === $post->post_type ) {
+		ob_start();
+		anthologize_display_project_content( get_the_ID() );
+		$content .= ob_get_clean();
 	}
 	return $content;
 }
-
-// add_filter('the_content', 'anthologize_filter_post_content');
 
 /**
  * Get data about an export "session".
  *
  * @since 0.7.8
+ * @return array
  */
 function anthologize_get_session() {
 	$session = get_user_meta( get_current_user_id(), 'anthologize_export_session', true );
-	if ( ! $session ) {
+	if ( ! is_array( $session ) ) {
 		$session = array();
 	}
 
@@ -169,7 +191,7 @@ function anthologize_delete_session() {
  *
  * @since 0.7.8
  *
- * @param array $data
+ * @param array $data Data to save.
  */
 function anthologize_save_session( $data ) {
 	$keys = anthologize_get_session_data_keys();
@@ -186,7 +208,7 @@ function anthologize_save_session( $data ) {
 }
 
 /**
- * Get a list of keys that are whitelisted for sessions.
+ * Get a list of keys that are allowed for sessions.
  *
  * @return array
  */
@@ -221,11 +243,7 @@ function anthologize_get_session_data_keys() {
 		'outputParams',
 	);
 
-	/**
-	 * Filters the keys that can be saved as part of an export session.
-	 *
-	 * @since 0.7.8
-	 */
+	/** @since 0.7.8 */
 	return apply_filters( 'anthologize_get_session_data_keys', $keys );
 }
 

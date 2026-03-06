@@ -2,11 +2,15 @@
 
 
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 if ( ! class_exists( 'Anthologize_Format_API' ) ) :
 
 	class Anthologize_Format_API {
 
-		function __construct() {
+		public function __construct() {
 		}
 
 		/**
@@ -75,17 +79,13 @@ if ( ! class_exists( 'Anthologize_Format_API' ) ) :
 				'default' => $default,
 			);
 
-			if ( ! empty( $anthologize_formats[ $format_name ][ $option_name ] ) && $already_option = $anthologize_formats[ $format_name ][ $option_name ] ) {
-				// Parse the registered options with the existing ones
-				$option = wp_parse_args( $option, $already_option );
-				extract( $options, EXTR_SKIP );
+			if ( ! empty( $anthologize_formats[ $format_name ][ $option_name ] ) ) {
+				$option = wp_parse_args( $option, $anthologize_formats[ $format_name ][ $option_name ] );
 			}
 
-			if ( $anthologize_formats[ $format_name ][ $option_name ] = $option ) {
-				return true;
-			}
+			$anthologize_formats[ $format_name ][ $option_name ] = $option;
 
-			return false;
+			return true;
 		}
 
 		public static function deregister_format_option( $format_name, $option_name ) {
