@@ -1,10 +1,13 @@
-=== Plugin Name ===
+=== Anthologize ===
 Contributors: oneweekonetool, boonebgorges, digitaleffie, gossettphd, janaremy, jcmeloni, jeremyboggs, knoxdw, patrickmj, patrickrashleigh, sramsay, zmccune, chnm
 Donate link: http://anthologize.org/
 Tags: book, pdf, tei, epub, publish, ebook
-Requires at least: 3.3
+Requires at least: 6.0
 Tested up to: 6.7
-Stable tag: 0.8.3
+Stable tag: 1.0.0
+Requires PHP: 7.4
+License: GPLv3 or later
+License URI: https://www.gnu.org/licenses/gpl-3.0.html
 
 Use the power of WordPress to transform your content into a book.
 
@@ -22,16 +25,15 @@ To install Anthologize manually, follow these steps.
 
 1. Upload the `anthologize` directory to `/wp-content/plugins/`
 1. Make sure the `/anthologize/templates/epub/temp/` directory is writable by the server
-1. Activate Anthologize through the WordPres 'Plugins' menu
+1. Activate Anthologize through the WordPress 'Plugins' menu
 1. Visit Dashboard > Anthologize to start compiling your project
 
 If you're upgrading manually from a previous version of Anthologize, please be sure to deactivate your existing plugin before replacing it with the new files, and reactivate after uploading.
 
 For full export functionality, your PHP installation must have the `mbstring` extension enabled. See <a href="https://www.php.net/manual/en/mbstring.installation.php">the mbstring installation page on php.net</a> for more information.
 
-Note that the following PHP extensions may be required for all export formats:
+Note that the following PHP extensions are required for all export formats:
 - mbstring
-- tcpdf
 - zip
 
 == Screenshots ==
@@ -59,6 +61,22 @@ Cover images in ePub output.
 To add your own cover images, just upload them to the anthologize/templates/epub/covers directory and they will appear as options in the export screen. Make sure they are readable by the server.
 
 == Changelog ==
+
+= 1.0.0 =
+* Security: Added CSRF protection (nonce verification) to all AJAX handlers and forms
+* Security: Added capability checks to all privileged operations
+* Security: Sanitized all user input using WordPress sanitization functions
+* Security: Escaped all output with esc_html(), esc_attr(), esc_url(), and wp_kses_post()
+* Security: Fixed XPath injection vulnerability in TEI DOM builder
+* Security: Replaced unsafe extract() calls with direct array access
+* Security: Replaced print(json_encode())+die() with wp_send_json_success() and wp_send_json_error()
+* Security: Added nonce parameters to all JavaScript AJAX requests
+* Modernization: Replaced deprecated query_posts() with WP_Query
+* Modernization: Use wp_safe_redirect() instead of wp_redirect()
+* Modernization: Updated minimum requirements to PHP 7.4 and WordPress 6.0
+* Modernization: Use modern WordPress APIs throughout
+* Added uninstall.php for clean plugin removal
+* Removed error_reporting(0) calls from export templates
 
 = 0.8.3 =
 * Fixed security vulnerability when deleting or creating projects
