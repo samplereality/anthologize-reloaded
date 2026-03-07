@@ -1,6 +1,11 @@
-=== Anthologize ===
-Contributors: oneweekonetool, boonebgorges, digitaleffie, gossettphd, janaremy, jcmeloni, jeremyboggs, knoxdw, patrickmj, patrickrashleigh, sramsay, zmccune, chnm
-Donate link: http://anthologize.org/
+# Anthologize-Reloaded
+
+*An updated version of the original Anthologize WordPress plugin.*
+
+**Original Contributors:** oneweekonetool, boonebgorges, digitaleffie, gossettphd, janaremy, jcmeloni, jeremyboggs, knoxdw, patrickmj, patrickrashleigh, sramsay, zmccune, chnm
+
+**Current Maintainers:** Mark Sample, Claude Code
+
 Tags: book, pdf, tei, epub, publish, ebook
 Requires at least: 6.0
 Tested up to: 6.7
