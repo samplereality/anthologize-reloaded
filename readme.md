@@ -24,7 +24,6 @@ The best way to install Anthologize is via the Add New link under Dashboard > Pl
 To install Anthologize manually, follow these steps.
 
 1. Upload the `anthologize` directory to `/wp-content/plugins/`
-1. Make sure the `/anthologize/templates/epub/temp/` directory is writable by the server
 1. Activate Anthologize through the WordPress 'Plugins' menu
 1. Visit Dashboard > Anthologize to start compiling your project
 
@@ -51,9 +50,9 @@ Change the max_execution_time setting:
 max_execution_time = 180;
 
 Change the memory_limit setting:
-memory_limit = 128M;
+memory_limit = 256M;
 
-The latest release of PHP has a default memory limit of 128M, but this might not be in place on your server. Increasing the execution time (measured in seconds) can also help.
+WordPress recommends a minimum of 256M for memory_limit, but your server may be set lower. Increasing the execution time (measured in seconds) can also help.
 In a hosted server environment, increasing the resources Anthologize consumes could hurt performance for everyone else on your server. It might be worth consulting your hosting company before increasing these resource limits and exporting projects on a regular basis.
 
 Cover images in ePub output.
