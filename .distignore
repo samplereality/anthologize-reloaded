@@ -1,0 +1,53 @@
+# Version control
+.git
+.gitignore
+
+# Dev config
+phpcs.xml.dist
+phpunit.xml
+composer.json
+composer.lock
+
+# Dev files
+tests
+screenshot-1.jpg
+
+# OS files
+.DS_Store
+*~
+*.swp
+
+# Vendor dev files
+vendor/pear/console_getopt/tests
+vendor/pear/file_archive/doc
+vendor/pear/file_archive/tests
+vendor/pear/file_archive/.gitignore
+vendor/pear/mime_type/docs
+vendor/pear/mime_type/tests
+vendor/pear/mime_type/.gitignore
+vendor/pear/mime_type/.travis.yml
+vendor/tecnickcom/tcpdf/examples
+vendor/tecnickcom/tcpdf/.git
+
+# TCPDF bundled fonts (not needed - plugin uses only helvetica/courier core fonts)
+vendor/tecnickcom/tcpdf/fonts/ae_fonts_2.0
+vendor/tecnickcom/tcpdf/fonts/dejavu-fonts-ttf-2.33
+vendor/tecnickcom/tcpdf/fonts/dejavu-fonts-ttf-2.34
+vendor/tecnickcom/tcpdf/fonts/freefont-20120503
+vendor/tecnickcom/tcpdf/fonts/ae*.z
+vendor/tecnickcom/tcpdf/fonts/ae*.ctg.z
+vendor/tecnickcom/tcpdf/fonts/ae*.php
+vendor/tecnickcom/tcpdf/fonts/cid*.php
+vendor/tecnickcom/tcpdf/fonts/dejavu*.z
+vendor/tecnickcom/tcpdf/fonts/dejavu*.ctg.z
+vendor/tecnickcom/tcpdf/fonts/dejavu*.php
+vendor/tecnickcom/tcpdf/fonts/free*.z
+vendor/tecnickcom/tcpdf/fonts/free*.ctg.z
+vendor/tecnickcom/tcpdf/fonts/free*.php
+vendor/tecnickcom/tcpdf/fonts/pdf*.z
+vendor/tecnickcom/tcpdf/fonts/pdf*.ctg.z
+vendor/tecnickcom/tcpdf/fonts/pdf*.php
+vendor/tecnickcom/tcpdf/fonts/times*.php
+vendor/tecnickcom/tcpdf/fonts/uni2cid*.php
+vendor/tecnickcom/tcpdf/fonts/zapfdingbats.php
+vendor/tecnickcom/tcpdf/fonts/symbol.php
