@@ -1,0 +1,34 @@
+name: Build and Release
+
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build plugin zip and attach to release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Extract version from plugin header
+        id: version
+        run: |
+          VERSION=$(grep -m1 'Version:' anthologize.php | sed 's/.*Version:\s*//' | tr -d '[:space:]')
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Plugin version: $VERSION"
+
+      - name: Build plugin zip
+        run: |
+          chmod +x build-plugin-zip.sh
+          ./build-plugin-zip.sh
+
+      - name: Upload zip to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: anthologize.zip
