@@ -48,6 +48,7 @@
 
 		var data = {
 			action: 'anthologize_get_posts_by',
+			nonce: anth_ajax.nonce,
 			filterby: currentFilterBy,
 			orderby: currentOrderBy
 		};
@@ -71,7 +72,7 @@
 			data: data,
 			success: function(response){
 				j('#sidebar-posts').empty();
-				j.each( response, function(post_index, post_data) {
+				j.each( response.data, function(post_index, post_data) {
 					var post_id = post_data.ID;
 					var h = '';
 					h += '<li class="part-item item has-accordion accordion-closed">';
@@ -181,6 +182,7 @@
 				timeout: 10000,
 				data: {
 					action: 'get_filterby_terms',
+					nonce: anth_ajax.nonce,
 					filtertype: currentFilterBy
 				},
 				dataType: 'json',
@@ -196,7 +198,7 @@
 					} else {
 						$termFilter.append('<option value=""> - </option>');
 					}
-					j.each( response, function(tagcat_index, tagcat) {
+					j.each( response.data, function(tagcat_index, tagcat) {
 						var h = '<option value="' + tagcat_index + '">' + tagcat + '</option>';
 						$termFilter.append(h);
 					});
@@ -234,9 +236,9 @@
 				type: 'POST',
 				timeout: 10000,
 				dataType:'json',
-				data: {action:'get_project_meta',proj_id:proj_id},
+				data: {action:'get_project_meta',nonce:anth_ajax.nonce,proj_id:proj_id},
 				success: function(response){
-					var meta = j.parseJSON(response);
+					var meta = response.data;
 
 					if ( meta['cctype'] )
 						j('#cctype').val(meta['cctype']);

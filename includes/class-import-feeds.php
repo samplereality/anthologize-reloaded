@@ -1,15 +1,13 @@
 <?php
 
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
 if ( ! class_exists( 'Anthologize_Import_Feeds_Panel' ) ) :
 
 	class Anthologize_Import_Feeds_Panel {
 
-		/**
-		 * Bootstrap for the Anthologize singleton
-		 *
-		 * @since 0.7
-		 * @return obj Anthologize instance
-		 */
 		public static function init() {
 			static $instance;
 			if ( empty( $instance ) ) {
@@ -18,81 +16,77 @@ if ( ! class_exists( 'Anthologize_Import_Feeds_Panel' ) ) :
 			return $instance;
 		}
 
-		/**
-		 *  Creates the Dashboard Panel for importing feed content, and defines the business functions
-		 */
-		function __construct() {
+		public function __construct() {
 			$this->display();
 		}
 
-		function display() {
+		public function display() {
 			?>
 		<div class="wrap anthologize">
 
-		<div id="anthologize-logo"><img src="<?php echo esc_url( plugins_url() . '/anthologize/images/anthologize-logo.gif' ); ?>" alt="<?php esc_attr_e( 'Anthologize logo', 'anthologize' ); ?>" /></div>
-			<h2><?php _e( 'Import Content', 'anthologize' ); ?></h2>
+		<div id="anthologize-logo"><img src="<?php echo esc_url( anthologize()->plugin_url . 'images/anthologize-logo.gif' ); ?>" alt="<?php esc_attr_e( 'Anthologize logo', 'anthologize' ); ?>" /></div>
+			<h2><?php esc_html_e( 'Import Content', 'anthologize' ); ?></h2>
 
 			<?php if ( ! isset( $_POST['feedurl'] ) && ! isset( $_POST['copyitems'] ) ) : ?>
 
 				<div id="export-form">
 
-				<p><?php _e( 'Want to populate your Anthologize project with content from another web site? Enter the RSS feed address of the site from which you\'d like to import and click Go.', 'anthologize' ); ?></p>
+				<p><?php esc_html_e( 'Want to populate your Anthologize project with content from another web site? Enter the RSS feed address of the site from which you\'d like to import and click Go.', 'anthologize' ); ?></p>
 
-				<p><?php _e( 'Please respect the rights of copyright holders when using this import tool.', 'anthologize' ); ?></p>
+				<p><?php esc_html_e( 'Please respect the rights of copyright holders when using this import tool.', 'anthologize' ); ?></p>
 
 				<form action="" method="post">
 
-				<label for="feedurl"><?php _e( 'Feed URL:', 'anthologize' ); ?></label>
+				<label for="feedurl"><?php esc_html_e( 'Feed URL:', 'anthologize' ); ?></label>
 				<input type="text" name="feedurl" id="feedurl" size="100" />
 
-				<div class="anthologize-button"><input type="submit" name="submit" id="submit" value="<?php _e( 'Go', 'anthologize' ); ?>" /></div>
+				<?php wp_nonce_field( 'anthologize_import_feed' ); ?>
+				<div class="anthologize-button"><input type="submit" name="submit" id="submit" value="<?php esc_attr_e( 'Go', 'anthologize' ); ?>" /></div>
 
 				</form>
 
 			<?php elseif ( isset( $_POST['feedurl'] ) && ! isset( $_POST['copyitems'] ) ) : ?>
-				<?php $items = $this->grab_feed( $_POST['feedurl'] ); ?>
+				<?php check_admin_referer( 'anthologize_import_feed' ); ?>
+				<?php $feedurl = esc_url_raw( wp_unslash( $_POST['feedurl'] ) ); ?>
+				<?php $items = $this->grab_feed( $feedurl ); ?>
 				<?php if ( isset( $items['error'] ) ) : ?>
 
-					<p><?php _e( 'Sorry, no items were found. Please try another feed address.', 'anthologize' ); ?></p>
+					<p><?php esc_html_e( 'Sorry, no items were found. Please try another feed address.', 'anthologize' ); ?></p>
 
 				<?php else : ?>
 
 				<div id="export-form">
 
-				<p><?php _e( 'Select the items you\'d like to import to your Imported Items library and click Import.', 'anthologize' ); ?></p>
+				<p><?php esc_html_e( 'Select the items you\'d like to import to your Imported Items library and click Import.', 'anthologize' ); ?></p>
 
 				<form action="" method="post">
 
-					<h3><?php _e( 'Feed items:', 'anthologize' ); ?></h3>
+					<h3><?php esc_html_e( 'Feed items:', 'anthologize' ); ?></h3>
 
 					<ul class="potential-feed-items">
 					<?php foreach ( $items as $key => $item ) : ?>
-						<?php
-							$author = '';
-						foreach ( $item['authors'] as $author ) {
-							$author .= $author->name . ' ';
-						}
-						?>
 						<li>
-							<label><input name="copyitems[]" type="checkbox" checked="checked" value="<?php echo esc_attr( $key ); ?>"> <strong><?php echo esc_html( $item['title'] ); ?></strong></label> <?php echo esc_html( $item['description'] ); ?>
+							<label><input name="copyitems[]" type="checkbox" checked="checked" value="<?php echo esc_attr( $key ); ?>"> <strong><?php echo esc_html( $item['title'] ); ?></strong></label> <?php echo esc_html( wp_strip_all_tags( $item['description'] ) ); ?>
 						</li>
 					<?php endforeach; ?>
 					</ul>
 
-					<input type="hidden" name="feedurl" value="<?php echo esc_attr( $_POST['feedurl'] ); ?>" />
-					<div class="anthologize-button"><input type="submit" name="submit_items" id="submit-import" value="<?php _e( 'Import', 'anthologize' ); ?>" /></div>
+					<input type="hidden" name="feedurl" value="<?php echo esc_attr( $feedurl ); ?>" />
+					<?php wp_nonce_field( 'anthologize_import_items' ); ?>
+					<div class="anthologize-button"><input type="submit" name="submit_items" id="submit-import" value="<?php esc_attr_e( 'Import', 'anthologize' ); ?>" /></div>
 
 				</form>
 
 
-				<p><?php _e( 'Or enter a new feed URL and click Go to import different feed content.', 'anthologize' ); ?></p>
+				<p><?php esc_html_e( 'Or enter a new feed URL and click Go to import different feed content.', 'anthologize' ); ?></p>
 
 				<form action="" method="post">
 
-					<label for="feedurl"><?php _e( 'Feed URL:', 'anthologize' ); ?></label>
-					<input type="text" name="feedurl" id="feedurl" size="100" value="<?php echo esc_attr( $_POST['feedurl'] ); ?>" />
+					<label for="feedurl"><?php esc_html_e( 'Feed URL:', 'anthologize' ); ?></label>
+					<input type="text" name="feedurl" id="feedurl" size="100" value="<?php echo esc_attr( $feedurl ); ?>" />
 
-					<div class="anthologize-button"><input type="submit" name="submit" id="submit-search" value="<?php _e( 'Go', 'anthologize' ); ?>" /></div>
+					<?php wp_nonce_field( 'anthologize_import_feed' ); ?>
+					<div class="anthologize-button"><input type="submit" name="submit" id="submit-search" value="<?php esc_attr_e( 'Go', 'anthologize' ); ?>" /></div>
 
 				</form>
 
@@ -103,62 +97,63 @@ if ( ! class_exists( 'Anthologize_Import_Feeds_Panel' ) ) :
 				<?php endif; ?>
 
 			<?php elseif ( isset( $_POST['copyitems'] ) ) : ?>
+				<?php check_admin_referer( 'anthologize_import_items' ); ?>
 				<?php
 
-				$items = $this->grab_feed( $_POST['feedurl'] );
+				$feedurl = isset( $_POST['feedurl'] ) ? esc_url_raw( wp_unslash( $_POST['feedurl'] ) ) : '';
+				$items   = $this->grab_feed( $feedurl );
 
 				if ( ! isset( $items['error'] ) ) {
+					$selected = array_map( 'absint', $_POST['copyitems'] );
 
 					foreach ( $items as $key => $item ) {
-						if ( ! in_array( $key, $_POST['copyitems'] ) ) {
+						if ( ! in_array( $key, $selected, true ) ) {
 							unset( $items[ $key ] );
 						}
 					}
 					$items = array_values( $items );
 
+					$imported_items = array();
+					foreach ( $items as $item ) {
+						$imported_items[] = $this->import_item( $item );
+					}
+
 					?>
 
-					<?php $imported_items = array(); ?>
-					<?php foreach ( $items as $item ) : ?>
-						<?php $imported_items[] = $this->import_item( $item ); ?>
-				<?php endforeach; ?>
-
-					<?php $howmany = count( $imported_items ); ?>
-
-				<h3><?php _e( 'Successfully imported!', 'anthologize' ); ?></h3>
+				<h3><?php esc_html_e( 'Successfully imported!', 'anthologize' ); ?></h3>
 
 				<?php } else { ?>
 
-				<h3><?php _e( 'No items found. Please try another feed address.', 'anthologize' ); ?></h3>
+				<h3><?php esc_html_e( 'No items found. Please try another feed address.', 'anthologize' ); ?></h3>
 
 				<?php } ?>
 
 
-				<p><a href="admin.php?page=anthologize"><?php _e( 'Back to Anthologize', 'anthologize' ); ?></a></p>
+				<p><a href="admin.php?page=anthologize"><?php esc_html_e( 'Back to Anthologize', 'anthologize' ); ?></a></p>
 
 			<?php endif; ?>
 		</div>
 			<?php
 		}
 
-		function grab_feed( $feedurl ) {
-
-			include_once ABSPATH . 'wp-includes/class-simplepie.php';
+		public function grab_feed( $feedurl ) {
+			if ( empty( $feedurl ) ) {
+				return array( 'error' => 'empty-url' );
+			}
 
 			$rss = fetch_feed( trim( $feedurl ) );
 
-			if ( ! empty( $rss->errors ) ) {
-				return array( 'error' => 'unknown-error' );
+			if ( is_wp_error( $rss ) ) {
+				return array( 'error' => 'fetch-error' );
 			}
 
-			if ( ! $maxitems = $rss->get_item_quantity() ) {
+			$maxitems = $rss->get_item_quantity();
+			if ( ! $maxitems ) {
 				return array( 'error' => 'no-items' );
 			}
 
 			$feed_title     = $rss->get_title();
 			$feed_permalink = $rss->get_permalink();
-
-			$rss_items = $rss->get_items( 0, $maxitems );
 
 			$items_data = array(
 				'feed_title'     => $feed_title,
@@ -181,47 +176,48 @@ if ( ! class_exists( 'Anthologize_Import_Feeds_Panel' ) ) :
 				$item_data['permalink']    = $rss_item->get_permalink();
 
 				$items[] = $item_data;
-				// $this->record_item( $item_data );
 			}
 
 			return $items;
 		}
 
-		function import_item( $item ) {
-			global $current_user;
-
+		public function import_item( $item ) {
 			$tags = array();
 
-			foreach ( $item['categories'] as $cat ) {
-				if ( $cat->term ) {
-					$tags[] = $cat->term;
+			if ( ! empty( $item['categories'] ) && is_array( $item['categories'] ) ) {
+				foreach ( $item['categories'] as $cat ) {
+					if ( isset( $cat->term ) ) {
+						$tags[] = sanitize_text_field( $cat->term );
+					}
 				}
 			}
 
 			$args = array(
 				'post_status'    => 'draft',
 				'post_type'      => 'anth_imported_item',
-				'post_author'    => $current_user->ID,
-				'guid'           => $item['permalink'],
-				'post_content'   => $item['content'],
-				'post_excerpt'   => $item['description'],
+				'post_author'    => get_current_user_id(),
+				'guid'           => esc_url_raw( $item['permalink'] ),
+				'post_content'   => wp_kses_post( $item['content'] ),
+				'post_excerpt'   => wp_kses_post( $item['description'] ),
 				'comment_status' => 'closed',
 				'ping_status'    => 'closed',
-				'post_title'     => $item['title'],
+				'post_title'     => sanitize_text_field( $item['title'] ),
 				'tags_input'     => $tags,
 			);
 
 			if ( isset( $item['created_date'] ) ) {
-				$original_post_date    = date( 'Y-m-d H:i:s', strtotime( $item['created_date'] ) );
+				$original_post_date    = gmdate( 'Y-m-d H:i:s', strtotime( $item['created_date'] ) );
 				$args['post_date']     = $original_post_date;
 				$args['post_date_gmt'] = $original_post_date;
 			}
 
 			$post_id = wp_insert_post( $args );
 
-			$author_name = $item['authors'][0]->name;
-			update_post_meta( $post_id, 'author_name', $author_name );
-			update_post_meta( $post_id, 'imported_item_meta', $item );
+			if ( $post_id && ! is_wp_error( $post_id ) ) {
+				$author_name = ! empty( $item['authors'][0]->name ) ? sanitize_text_field( $item['authors'][0]->name ) : '';
+				update_post_meta( $post_id, 'author_name', $author_name );
+				update_post_meta( $post_id, 'imported_item_meta', $item );
+			}
 
 			return $post_id;
 		}

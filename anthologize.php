@@ -3,10 +3,14 @@
 Plugin Name: Anthologize
 Plugin URI: http://anthologize.org
 Description: Use the power of WordPress to transform your content into a book.
-Version: 0.8.3
+Version: 1.0.0
 Text Domain: anthologize
+Requires at least: 6.0
+Requires PHP: 7.4
 Author: One Week | One Tool
 Author URI: http://oneweekonetool.org
+License: GPL-3.0-or-later
+License URI: https://www.gnu.org/licenses/gpl-3.0.html
 */
 
 /*
@@ -29,8 +33,13 @@ Anthologize includes TCPDF, which is released under the LGPL Use and
 modifications of TDPDF must comply with its license.
 */
 
-if ( ! defined( 'ANTHOLOGIZE_VERSION' ) )
-	define( 'ANTHOLOGIZE_VERSION', '0.8.3' );
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+if ( ! defined( 'ANTHOLOGIZE_VERSION' ) ) {
+	define( 'ANTHOLOGIZE_VERSION', '1.0.0' );
+}
 
 require dirname( __FILE__ ) . '/vendor/autoload.php';
 
@@ -38,11 +47,32 @@ if ( ! class_exists( 'Anthologize' ) ) :
 
 class Anthologize {
 
+	/** @var string */
+	public $basename;
+
+	/** @var string */
+	public $plugin_dir;
+
+	/** @var string */
+	public $plugin_url;
+
+	/** @var string */
+	public $includes_dir;
+
+	/** @var string */
+	public $cache_dir;
+
+	/** @var string */
+	public $cache_url;
+
+	/** @var Anthologize_Admin_Main|null */
+	public $admin;
+
 	/**
-	 * Bootstrap for the Anthologize singleton
+	 * Bootstrap for the Anthologize singleton.
 	 *
 	 * @since 0.7
-	 * @return obj Anthologize instance
+	 * @return Anthologize
 	 */
 	public static function init() {
 		static $instance;
@@ -53,35 +83,24 @@ class Anthologize {
 	}
 
 	/**
-	 * Constructor for the Anthologize class
-	 *
-	 * This constructor does the following:
-	 * - Checks minimum PHP and WP version, and bails if they're not met
-	 * - Includes Anthologize's main files
-	 * - Sets up the basic hooks that initialize Anthologize's post types and UI
+	 * Constructor for the Anthologize class.
 	 *
 	 * @since 0.7
 	 */
 	public function __construct() {
-
-		// Bail if PHP version is not at least 5.0
 		if ( ! self::check_minimum_php() ) {
 			add_action( 'admin_notices', array( 'Anthologize', 'phpversion_nag' ) );
 			return;
 		}
 
-		// Bail if WP version is not at least 3.3
 		if ( ! self::check_minimum_wp() ) {
 			add_action( 'admin_notices', array( 'Anthologize', 'wpversion_nag' ) );
+			return;
 		}
-
-		// If we've made it this far, start initializing Anthologize
 
 		register_activation_hook( __FILE__, array( $this, 'activation' ) );
 		register_deactivation_hook( __FILE__, array( $this, 'deactivation' ) );
 
-		// @todo WP's functions plugin_basename() etc don't work
-		//   correctly on symlinked setups, so I'm implementing my own
 		$bn = explode( DIRECTORY_SEPARATOR, dirname( __FILE__ ) );
 		$this->basename     = array_pop( $bn );
 		$this->plugin_dir   = plugin_dir_path( __FILE__ );
@@ -101,53 +120,57 @@ class Anthologize {
 	}
 
 	/**
-	 * Check to see whether the PHP version is at least 5.0
+	 * Check minimum PHP version (7.4).
 	 *
 	 * @return bool
-	 * @since 0.7
 	 */
 	public static function check_minimum_php() {
-		return version_compare( phpversion(), '5', '>=' );
+		return version_compare( phpversion(), '7.4', '>=' );
 	}
 
 	/**
-	 * Check to see whether the PHP version is at least 5.0
+	 * Check minimum WP version (6.0).
 	 *
 	 * @return bool
-	 * @since 0.7
 	 */
 	public static function check_minimum_wp() {
-		return version_compare( get_bloginfo( 'version' ), '3.3', '>=' );
+		return version_compare( get_bloginfo( 'version' ), '6.0', '>=' );
 	}
 
 	/**
-	 * Echoes the admin notice shown when the PHP requirements are not met
+	 * Admin notice for PHP version requirement.
 	 *
 	 * @since 0.7
 	 */
 	public static function phpversion_nag() {
-		echo '<div id="message" class="error fade">';
-		echo   '<p>';
-		echo     sprintf( __( "<strong>Anthologize will not work with your version of PHP</strong>. You are currently running PHP v%s, and Anthologize requires version 5.0 or greater. Please contact your host if you would like to use Anthologize. ", 'anthologize' ), phpversion() );
-		echo   '</p>';
-		echo '</div>';
+		printf(
+			'<div class="notice notice-error"><p>%s</p></div>',
+			sprintf(
+				/* translators: %s: Current PHP version */
+				esc_html__( 'Anthologize requires PHP 7.4 or greater. You are running PHP %s.', 'anthologize' ),
+				esc_html( phpversion() )
+			)
+		);
 	}
 
 	/**
-	 * Echoes the admin notice shown when the minimum WP version is not met
+	 * Admin notice for WP version requirement.
 	 *
 	 * @since 0.7
 	 */
 	public static function wpversion_nag() {
-		echo '<div id="message" class="error fade">';
-		echo   '<p>';
-		echo     sprintf( __( "<strong>Anthologize will not work with your version of WordPress</strong>. You are currently running WordPress v%s, and Anthologize requires version 3.3 or greater. Please upgrade WordPress if you would like to use Anthologize. ", 'anthologize' ), get_bloginfo( 'version' ) );
-		echo   '</p>';
-		echo '</div>';
+		printf(
+			'<div class="notice notice-error"><p>%s</p></div>',
+			sprintf(
+				/* translators: %s: Current WordPress version */
+				esc_html__( 'Anthologize requires WordPress 6.0 or greater. You are running WordPress %s.', 'anthologize' ),
+				esc_html( get_bloginfo( 'version' ) )
+			)
+		);
 	}
 
 	/**
-	 * Set up constants needed throughout the plugin
+	 * Set up constants.
 	 *
 	 * @since 0.7
 	 */
@@ -178,49 +201,51 @@ class Anthologize {
 	}
 
 	/**
-	 * Include required files
+	 * Include required files.
 	 *
 	 * @since 0.7
 	 */
 	public function includes() {
-
-		require( $this->includes_dir . 'class-format-api.php' );
-		require( $this->includes_dir . 'functions.php' );
+		require $this->includes_dir . 'class-format-api.php';
+		require $this->includes_dir . 'functions.php';
 
 		if ( is_admin() ) {
-			require( $this->includes_dir . 'class-admin-main.php' );
+			require $this->includes_dir . 'class-admin-main.php';
 			$this->admin = new Anthologize_Admin_Main();
 		}
 	}
 
+	/**
+	 * Set up hooks.
+	 */
 	public function setup_hooks() {
 		add_action( 'init',             array( $this, 'anthologize_init' ) );
 		add_action( 'anthologize_init', array( $this, 'register_post_types' ) );
 		add_action( 'plugins_loaded',   array( $this, 'textdomain' ) );
 	}
 
+	/**
+	 * Fire the anthologize_init action.
+	 */
 	public static function anthologize_init() {
 		do_action( 'anthologize_init' );
 	}
 
-	function activation() {
-		require_once( dirname( __FILE__ ) . '/includes/class-activation.php' );
+	/**
+	 * Activation routine.
+	 */
+	public function activation() {
+		require_once dirname( __FILE__ ) . '/includes/class-activation.php';
 		$activation = new Anthologize_Activation();
 	}
 
-	function deactivation() {}
+	/**
+	 * Deactivation routine.
+	 */
+	public function deactivation() {}
 
 	/**
-	 * Register our custom post types
-	 *
-	 * Oh, Oh, Oh, It's Magic
-	 *
-	 * We register four types:
-	 * - anth_project is the top-level CPT (Projects)
-	 * - anth_part corresponds to book chapters (Parts)
-	 * - anth_library_item corresponds to individual project posts (Items)
-	 * - anth_imported_item is an item pulled from an RSS feed, but not yet
-	 *   incorporated into a Project/Port
+	 * Register custom post types.
 	 */
 	public function register_post_types() {
 		register_post_type( 'anth_project', array(
@@ -230,7 +255,7 @@ class Anthologize {
 			'show_ui'             => false,
 			'capability_type'     => 'page',
 			'hierarchical'        => false,
-			'supports'            => array('title', 'editor', 'revisions'),
+			'supports'            => array( 'title', 'editor', 'revisions' ),
 		) );
 
 		register_post_type( 'anth_part', array(
@@ -240,17 +265,17 @@ class Anthologize {
 			),
 			'exclude_from_search' => true,
 			'publicly_queryable'  => false,
-			'show_ui'             => true, // todo: hide
+			'show_ui'             => true,
 			'show_in_nav_menus'   => false,
 			'show_in_menu'        => false,
 			'show_in_admin_bar'   => false,
 			'capability_type'     => 'page',
 			'hierarchical'        => true,
-			'supports'            => array('title'),
+			'supports'            => array( 'title' ),
 		) );
 
 		register_post_type( 'anth_library_item', array(
-			'label'               => __('Library Items', 'anthologize' ),
+			'label'               => __( 'Library Items', 'anthologize' ),
 			'exclude_from_search' => true,
 			'publicly_queryable'  => false,
 			'show_ui'             => true,
@@ -263,7 +288,7 @@ class Anthologize {
 		) );
 
 		register_post_type( 'anth_imported_item', array(
-			'label'               => __('Imported Items', 'anthologize' ),
+			'label'               => __( 'Imported Items', 'anthologize' ),
 			'exclude_from_search' => true,
 			'publicly_queryable'  => false,
 			'show_ui'             => true,
@@ -276,12 +301,12 @@ class Anthologize {
 		) );
 	}
 
-	// Allow this plugin to be translated by specifying text domain
-	// Todo: Make the logic a bit more complex to allow for custom text within a given language
-	function textdomain() {
+	/**
+	 * Load text domain.
+	 */
+	public function textdomain() {
 		$locale = get_locale();
 
-		// First look in wp-content/anthologize-files/languages, where custom language files will not be overwritten by Anthologize upgrades. Then check the packaged language file directory.
 		$mofile_custom = WP_CONTENT_DIR . "/anthologize-files/languages/anthologize-$locale.mo";
 
 		if ( file_exists( $mofile_custom ) ) {
@@ -292,31 +317,37 @@ class Anthologize {
 	}
 
 	/**
-	 * Registers static assets with WordPress.
+	 * Register static assets with WordPress.
 	 *
 	 * @since 0.8.0
 	 */
 	public function register_assets() {
-		wp_register_style( 'anthologize-admin-general', plugins_url() . '/anthologize/css/admin-general.css' );
+		wp_register_style( 'anthologize-admin-general', $this->plugin_url . 'css/admin-general.css', array(), ANTHOLOGIZE_VERSION );
 
-		wp_register_style( 'anthologize-admin', plugins_url() . '/anthologize/css/admin.css' );
+		wp_register_style( 'anthologize-admin', $this->plugin_url . 'css/admin.css', array(), ANTHOLOGIZE_VERSION );
 
-		wp_register_script( 'blockUI-js', plugins_url() . '/anthologize/js/jquery.blockUI.js' );
-		wp_register_script( 'jquery-cookie', plugins_url() . '/anthologize/js/jquery-cookie.js' );
+		wp_register_script( 'blockUI-js', $this->plugin_url . 'js/jquery.blockUI.js', array(), ANTHOLOGIZE_VERSION, true );
+		wp_register_script( 'jquery-cookie', $this->plugin_url . 'js/jquery-cookie.js', array(), ANTHOLOGIZE_VERSION, true );
 
 		wp_register_script(
 			'anthologize-project-organizer',
-			plugins_url() . '/anthologize/js/project-organizer.js',
+			$this->plugin_url . 'js/project-organizer.js',
 			array(
 				'jquery-ui-sortable',
 				'jquery-ui-draggable',
 				'jquery-ui-datepicker',
 				'blockUI-js',
 				'jquery-cookie',
-			)
+			),
+			ANTHOLOGIZE_VERSION,
+			true
 		);
 
-		wp_register_script( 'anthologize-sortlist-js', plugins_url() . '/anthologize/js/anthologize-sortlist.js', array( 'anthologize-project-organizer' ) );
+		wp_register_script( 'anthologize-sortlist-js', $this->plugin_url . 'js/anthologize-sortlist.js', array( 'anthologize-project-organizer' ), ANTHOLOGIZE_VERSION, true );
+
+		wp_localize_script( 'anthologize-sortlist-js', 'anth_ajax', array(
+			'nonce' => wp_create_nonce( 'anthologize_ajax' ),
+		) );
 
 		wp_localize_script( 'anthologize-sortlist-js', 'anth_strings', array(
 			'append'           => __( 'Append', 'anthologize' ),
@@ -345,11 +376,10 @@ class Anthologize {
 endif;
 
 /**
- * A wrapper function that allows access to the Anthologize singleton
- *
- * We also use this function to bootstrap the plugin.
+ * Access the Anthologize singleton and bootstrap the plugin.
  *
  * @since 0.7
+ * @return Anthologize
  */
 function anthologize() {
 	return Anthologize::init();

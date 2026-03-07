@@ -179,20 +179,24 @@ var anthologize = {
 		dataType: 'json',
 		data: {
 		   action:'get_item_comments',
+		   nonce:anth_ajax.nonce,
 		   post_id:item_id
 		},
 		async:false,
 		timeout:20000,
 		success: function(response){
-			if (! response){
+			if (! response.success || ! response.data){
 				jQuery(item).find('.comments-panel').html('<p>' + anth_strings.no_comments + '</p><br /><input type="button" class="cancelComments" value="' + anth_strings.cancel + '" />');
+			} else if (response.data.empty) {
+				jQuery(item).find('.comments-panel').html('<p>' + response.data.text + '</p><br /><input type="button" class="cancelComments" value="' + anth_strings.cancel + '" />');
 			} else {
 
 				var w = jQuery(item).find('.comment-table tbody');
+				var data = response.data;
 
-				for (var itemId in response){
-					var commentid = response[itemId].comment_ID;
-					if ( response[itemId].is_included ) {
+				for (var itemId in data){
+					var commentid = data[itemId].comment_ID;
+					if ( data[itemId].is_included ) {
 						var checked = ' checked="checked"';
 					} else {
 						var checked = '';
@@ -200,11 +204,11 @@ var anthologize = {
 
 					var comment = '<tr><td class="checkbox"><input type="checkbox" class="select-comment" name="comments[]" id="comment-' + commentid + '"' + checked + ' /></td>';
 
-					comment += '<td class="comment-author-email">' + response[itemId].comment_author_email + '</td>';
+					comment += '<td class="comment-author-email">' + data[itemId].comment_author_email + '</td>';
 
-					comment += '<td class="comment-content">' + anthologize.trimToLength( response[itemId].comment_content, 30, commentid ) + '</td>';
+					comment += '<td class="comment-content">' + anthologize.trimToLength( data[itemId].comment_content, 30, commentid ) + '</td>';
 
-					comment += '<td class="comment-date">' + response[itemId].comment_date + '</td>';
+					comment += '<td class="comment-date">' + data[itemId].comment_date + '</td>';
 
 					comment += '</tr>';
 
@@ -524,6 +528,7 @@ jQuery(document).ready(function(){
 		dataType: 'json',
 		data: {
 			action:'include_comments',
+			nonce:anth_ajax.nonce,
 			check_action:check_action,
 			post_id:post_id,
 			comment_id:comment_id
@@ -531,7 +536,7 @@ jQuery(document).ready(function(){
 		async:false,
 		timeout:20000,
 		success: function(response){
-			jQuery(item).find('.included-comment-count').html(response.length);
+			jQuery(item).find('.included-comment-count').html(response.data.length);
 			jQuery.unblockUI();
 			return false;
 		},
@@ -574,6 +579,7 @@ jQuery(document).ready(function(){
 		dataType: 'json',
 		data: {
 		   action:'include_all_comments',
+		   nonce:anth_ajax.nonce,
 		   check_action:check_action,
 		   post_id:item_id
 		},
@@ -583,7 +589,7 @@ jQuery(document).ready(function(){
 			var checkboxes = jQuery(item).find( ':checkbox' );
 			var cvalue = check_action == 'remove' ? '' : 'checked';
 			jQuery(checkboxes).attr('checked', cvalue);
-			jQuery(item).find('.included-comment-count').html(response.length);
+			jQuery(item).find('.included-comment-count').html(response.data.length);
 			jQuery.unblockUI();
 		},
 		error: function(){

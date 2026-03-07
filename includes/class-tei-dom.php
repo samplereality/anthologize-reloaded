@@ -1,8 +1,18 @@
 <?php
 
-define( 'TEI', 'http://www.tei-c.org/ns/1.0' );
-define( 'HTML', 'http://www.w3.org/1999/xhtml' );
-define( 'ANTH', 'http://www.anthologize.org/ns' );
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
+}
+
+if ( ! defined( 'TEI' ) ) {
+	define( 'TEI', 'http://www.tei-c.org/ns/1.0' );
+}
+if ( ! defined( 'HTML' ) ) {
+	define( 'HTML', 'http://www.w3.org/1999/xhtml' );
+}
+if ( ! defined( 'ANTH' ) ) {
+	define( 'ANTH', 'http://www.anthologize.org/ns' );
+}
 
 class TeiDom {
 
@@ -98,6 +108,25 @@ class TeiDom {
 		$this->xpath->registerNamespace( 'tei', TEI );
 		$this->xpath->registerNamespace( 'html', HTML );
 		$this->xpath->registerNamespace( 'anth', ANTH );
+	}
+
+	/**
+	 * Escape a value for safe use in an XPath expression.
+	 *
+	 * @param string $value The value to escape.
+	 * @return string The escaped value, including surrounding quotes.
+	 */
+	private function xpath_escape( $value ) {
+		if ( false === strpos( $value, "'" ) ) {
+			return "'" . $value . "'";
+		}
+		if ( false === strpos( $value, '"' ) ) {
+			return '"' . $value . '"';
+		}
+		// Value contains both quotes; use concat().
+		$parts  = explode( "'", $value );
+		$result = "concat('" . implode( "',\"'\",'", $parts ) . "')";
+		return $result;
 	}
 
 
@@ -334,8 +363,11 @@ class TeiDom {
 			$this->knownPersons[ $id ] = $this->knownPersons[ $id ] + 1;
 
 			// since the node is added to the TEI at 1st occurance, update the node already in the TEI
-			$personCountNode            = $this->xpath->query( "//tei:person[@xml:id = '$id']/tei:persName/tei:num" )->item( 0 );
-			$personCountNode->nodeValue = $this->knownPersons[ $id ];
+			$escaped_id                 = $this->xpath_escape( $id );
+			$personCountNode            = $this->xpath->query( "//tei:person[@xml:id = $escaped_id]/tei:persName/tei:num" )->item( 0 );
+			if ( $personCountNode ) {
+				$personCountNode->nodeValue = $this->knownPersons[ $id ];
+			}
 			return false;
 		}
 		$this->knownPersons[ $id ] = 1;
@@ -383,8 +415,11 @@ class TeiDom {
 			$this->knownPersons[ $id ] = $this->knownPersons[ $id ] + 1;
 
 			// since the node is added to the TEI at 1st occurance, update the node already in the TEI
-			$personCountNode            = $this->xpath->query( "//tei:person[@xml:id = '$id']/tei:persName/tei:num" )->item( 0 );
-			$personCountNode->nodeValue = $this->knownPersons[ $id ];
+			$escaped_id                 = $this->xpath_escape( $id );
+			$personCountNode            = $this->xpath->query( "//tei:person[@xml:id = $escaped_id]/tei:persName/tei:num" )->item( 0 );
+			if ( $personCountNode ) {
+				$personCountNode->nodeValue = $this->knownPersons[ $id ];
+			}
 			return false;
 		}
 		$this->knownPersons[ $id ] = 1;
@@ -461,8 +496,11 @@ class TeiDom {
 		$id = $subject->taxonomy . '-' . $subject->slug;
 		if ( array_key_exists( $id, $this->knownSubjects ) ) {
 			$this->knownSubjects[ $id ]  = $this->knownSubjects[ $id ] + 1;
-			$subjectCountNode            = $this->xpath->query( "//tei:item[@xml:id = '$id']/tei:num" )->item( 0 );
-			$subjectCountNode->nodeValue = $this->knownSubjects[ $id ];
+			$escaped_id                  = $this->xpath_escape( $id );
+			$subjectCountNode            = $this->xpath->query( "//tei:item[@xml:id = $escaped_id]/tei:num" )->item( 0 );
+			if ( $subjectCountNode ) {
+				$subjectCountNode->nodeValue = $this->knownSubjects[ $id ];
+			}
 			return false;
 		}
 		$this->knownSubjects[ $id ] = 1;
@@ -691,7 +729,7 @@ class TeiDom {
 						}
 
 						$date = $this->dom->createElementNS( TEI, 'date' );
-						$date->setAttribute( 'when', date( 'Y-m-d', strtotime( $origPostData->post_date_gmt ) ) );
+						$date->setAttribute( 'when', gmdate( 'Y-m-d', strtotime( $origPostData->post_date_gmt ) ) );
 
 						$publicationStmt = $this->dom->createElementNS( TEI, 'publicationStmt' );
 						$publicationStmt->appendChild( $date );
@@ -842,9 +880,9 @@ class TeiDom {
 		$colophonNode->setAttribute( 'n', '0' );
 		$colophonNode->setAttribute( 'type', 'colophon' );
 
-		$day   = date( 'jS' );
-		$month = date( 'F' );
-		$year  = date( 'Y' );
+		$day   = current_time( 'jS' );
+		$month = current_time( 'F' );
+		$year  = current_time( 'Y' );
 		$date  = 'the ' . $day . ' of ' . $month . ', ' . $year;
 
 		$logo = plugins_url() . '/anthologize/images/anthologize-logo.gif';

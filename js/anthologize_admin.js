@@ -26,6 +26,7 @@ var anth_admin_ajax = {
             type: 'POST',
             dataType: 'json',
             data: {action:'place_item',
+                   nonce:anth_ajax.nonce,
                    project_id:config_obj.project_id,
                    post_id:config_obj.item_id,
                    new_post:config_obj.new_item,
@@ -35,7 +36,8 @@ var anth_admin_ajax = {
                    src_seq:seq_stringify(config_obj.src_seq)},
             async:false,
             timeout:20000,
-            success: function(data){
+            success: function(response){
+                var data = response.data;
                 if (config_obj.new_item == 'true') {
                 	for (var i in data) {
 			    anthologize.updateAddedItem(data[i].post_id, data[i].comment_count, false);
@@ -56,13 +58,15 @@ var anth_admin_ajax = {
             type: 'POST',
             dataType: 'json',
             data: {action:'place_items',
+                   nonce:anth_ajax.nonce,
                    project_id:config_obj.project_id,
                    post_ids:seq_stringify(config_obj.item_ids),
                    dest_id:config_obj.dest_id,
                    dest_seq:seq_stringify(config_obj.dest_seq)},
             async:false,
             timeout:20000,
-            success: function(data){
+            success: function(response){
+		var data = response.data;
 		for (var i in data){
 			anthologize.newItem = jQuery('#item-' + data[i].original_id);
 			anthologize.updateAddedItem(data[i].post_id, data[i].comment_count, data[i].original_id);
@@ -82,6 +86,7 @@ var anth_admin_ajax = {
             type: 'POST',
             dataType: 'json',
             data: {action:'merge_items',
+                   nonce:anth_ajax.nonce,
                    project_id:config_obj.project_id,
                    post_id:config_obj.post_id,
                    child_post_ids:config_obj.child_post_ids,
