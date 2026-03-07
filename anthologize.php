@@ -41,7 +41,17 @@ if ( ! defined( 'ANTHOLOGIZE_VERSION' ) ) {
 	define( 'ANTHOLOGIZE_VERSION', '1.0.0' );
 }
 
-require dirname( __FILE__ ) . '/vendor/autoload.php';
+$anthologize_autoloader = dirname( __FILE__ ) . '/vendor/autoload.php';
+if ( ! file_exists( $anthologize_autoloader ) ) {
+	add_action( 'admin_notices', function () {
+		printf(
+			'<div class="notice notice-error"><p>%s</p></div>',
+			esc_html__( 'Anthologize: Required dependencies are missing. Please run "composer install" in the plugin directory, or download a pre-built release.', 'anthologize' )
+		);
+	} );
+	return;
+}
+require $anthologize_autoloader;
 
 if ( ! class_exists( 'Anthologize' ) ) :
 
