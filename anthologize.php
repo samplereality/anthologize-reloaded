@@ -1,7 +1,7 @@
 <?php
 /*
 Plugin Name: Anthologize
-Plugin URI: http://anthologize.org
+Plugin URI: https://github.com/samplereality/anthologize-reloaded/
 Description: Use the power of WordPress to transform your content into a book.
 Version: 1.0.1
 Text Domain: anthologize
