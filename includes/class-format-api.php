@@ -221,10 +221,11 @@ function anthologize_register_default_formats() {
 	);
 
 	$d_font_face_pdf = array(
+		'dejavusans'      => __( 'DejaVu Sans (recommended, full Unicode)', 'anthologize' ),
+		'dejavuserif'     => __( 'DejaVu Serif (full Unicode)', 'anthologize' ),
 		'times'           => __( 'Times New Roman', 'anthologize' ),
 		'helvetica'       => __( 'Helvetica', 'anthologize' ),
 		'courier'         => __( 'Courier', 'anthologize' ),
-		'dejavusans'      => __( 'Deja Vu Sans', 'anthologize' ),
 		'arialunicid0-cj' => __( 'Chinese and Japanese', 'anthologize' ),
 		'arialunicid0-ko' => __( 'Korean', 'anthologize' ),
 	);
@@ -254,7 +255,7 @@ function anthologize_register_default_formats() {
 
 	anthologize_register_format_option( 'pdf', 'font-size', __( 'Base Font Fize', 'anthologize' ), 'dropdown', $d_font_size, '12' );
 
-	anthologize_register_format_option( 'pdf', 'font-face', __( 'Font Face', 'anthologize' ), 'dropdown', $d_font_face_pdf, 'times' );
+	anthologize_register_format_option( 'pdf', 'font-face', __( 'Font Face', 'anthologize' ), 'dropdown', $d_font_face_pdf, 'dejavusans' );
 
 	anthologize_register_format_option( 'pdf', 'metadata', __( 'Metadata to include in export', 'anthologize' ), 'checkboxes', $d_metadata_types, array_keys( $d_metadata_types ) );
 
