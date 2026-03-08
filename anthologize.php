@@ -3,7 +3,7 @@
 Plugin Name: Anthologize
 Plugin URI: http://anthologize.org
 Description: Use the power of WordPress to transform your content into a book.
-Version: 1.0.0
+Version: 1.0.1
 Text Domain: anthologize
 Requires at least: 6.0
 Requires PHP: 7.4
