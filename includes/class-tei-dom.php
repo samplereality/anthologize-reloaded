@@ -827,8 +827,6 @@ class TeiDom {
 	}
 
 	public function checkImageSources( $tmpHTML ) {
-		// TODO: check for net connectivity
-		// TODO: improve pseudo-error message and feedback
 		$xpath = new DOMXPath( $tmpHTML );
 		$srcs  = $xpath->evaluate( '//img/@src' );
 		foreach ( $srcs as $srcNode ) {
@@ -836,10 +834,29 @@ class TeiDom {
 			$imgNode = $srcNode->parentNode;
 			$src     = $srcNode->nodeValue;
 
+			// Use a HEAD request first to avoid downloading the full image.
+			// Include a browser-like User-Agent and Referer so CDN-served
+			// images (e.g. Jetpack/Photon on i0.wp.com) don't reject the request.
+			$request_args = array(
+				'timeout'    => 15,
+				'user-agent' => 'Mozilla/5.0 (WordPress/' . get_bloginfo( 'version' ) . '; ' . home_url() . ')',
+				'headers'    => array(
+					'Referer' => home_url(),
+				),
+			);
+
 			$code    = 0;
-			$request = wp_remote_get( $src );
+			$request = wp_remote_head( $src, $request_args );
 			if ( ! is_wp_error( $request ) ) {
 				$code = wp_remote_retrieve_response_code( $request );
+			}
+
+			// Some servers reject HEAD requests — retry with GET if needed.
+			if ( $code == 0 || $code == 405 || $code == 403 ) {
+				$request = wp_remote_get( $src, $request_args );
+				if ( ! is_wp_error( $request ) ) {
+					$code = wp_remote_retrieve_response_code( $request );
+				}
 			}
 
 			if ( $code != 200 ) {

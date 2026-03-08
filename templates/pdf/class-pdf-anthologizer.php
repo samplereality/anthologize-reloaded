@@ -290,6 +290,35 @@ class PdfAnthologizer extends Anthologizer {
 			img {
 				border: 5px solid #fff;
 			}
+			blockquote {
+				border-left: 3px solid #999999;
+				padding-left: 10px;
+				margin-left: 10px;
+				color: #444444;
+			}
+			.wp-block-pullquote {
+				border-top: 3px solid #555555;
+				border-bottom: 3px solid #555555;
+				padding: 10px 0;
+				margin: 15px 0;
+				text-align: center;
+			}
+			.wp-block-pullquote blockquote {
+				border-left: 0;
+				padding-left: 0;
+				margin-left: 0;
+				font-size: 1.2em;
+				font-style: italic;
+			}
+			.wp-block-pullquote cite {
+				font-style: normal;
+				font-size: .85em;
+				color: #686868;
+			}
+			.wp-block-separator {
+				text-align: center;
+				margin: 15px 0;
+			}
 		</style>';
 
 		return $style;
@@ -304,8 +333,32 @@ class PdfAnthologizer extends Anthologizer {
 			$content = str_replace("&amp;", "&", $content);
 		}
 
-		$content = preg_replace( '/<figure([^>]*)(class="([^"]+)")?([^>]*)>/', '<div class="wp-caption $2">', $content );
-		$content = preg_replace( '/<figcaption([^>]*)(class="([^"]+)")?([^>]*)>/', "\n" . '<div class="wp-caption-text $2">', $content );
+		// Convert <figure> and <figcaption> to <div> for TCPDF compatibility.
+		// Preserve original classes (e.g. wp-block-pullquote, wp-block-image)
+		// and add wp-caption as a fallback for figures without a specific block class.
+		$content = preg_replace_callback( '/<figure([^>]*)>/', function( $matches ) {
+			$attrs = $matches[1];
+			if ( preg_match( '/class="([^"]+)"/', $attrs, $class_match ) ) {
+				$classes = $class_match[1];
+				// Keep original classes and add wp-caption if not already a block class
+				if ( strpos( $classes, 'wp-block-' ) === false ) {
+					$classes = 'wp-caption ' . $classes;
+				}
+			} else {
+				$classes = 'wp-caption';
+			}
+			return '<div class="' . $classes . '">';
+		}, $content );
+
+		$content = preg_replace_callback( '/<figcaption([^>]*)>/', function( $matches ) {
+			$attrs = $matches[1];
+			if ( preg_match( '/class="([^"]+)"/', $attrs, $class_match ) ) {
+				$classes = 'wp-caption-text ' . $class_match[1];
+			} else {
+				$classes = 'wp-caption-text';
+			}
+			return "\n" . '<div class="' . $classes . '">';
+		}, $content );
 
 		$content = str_replace(
 			array(
@@ -316,6 +369,14 @@ class PdfAnthologizer extends Anthologizer {
 				'</div>',
 				'</div>',
 			),
+			$content
+		);
+
+		// Convert <hr> separator blocks to a visible divider for TCPDF,
+		// which has limited support for <hr> rendering.
+		$content = preg_replace(
+			'/<hr\b[^>]*\bwp-block-separator\b[^>]*\/?>/',
+			'<div class="wp-block-separator" style="text-align:center;margin:15px 0;">&#x2042;</div>',
 			$content
 		);
 
