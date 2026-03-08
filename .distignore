@@ -29,25 +29,25 @@ vendor/pear/mime_type/.travis.yml
 vendor/tecnickcom/tcpdf/examples
 vendor/tecnickcom/tcpdf/.git
 
-# TCPDF bundled fonts (not needed - plugin uses only helvetica/courier core fonts)
+# TCPDF bundled fonts not used by the plugin
 vendor/tecnickcom/tcpdf/fonts/ae_fonts_2.0
 vendor/tecnickcom/tcpdf/fonts/dejavu-fonts-ttf-2.33
 vendor/tecnickcom/tcpdf/fonts/dejavu-fonts-ttf-2.34
-vendor/tecnickcom/tcpdf/fonts/freefont-20120503
+vendor/tecnickcom/tcpdf/fonts/freefont-*
 vendor/tecnickcom/tcpdf/fonts/ae*.z
 vendor/tecnickcom/tcpdf/fonts/ae*.ctg.z
 vendor/tecnickcom/tcpdf/fonts/ae*.php
-vendor/tecnickcom/tcpdf/fonts/cid*.php
-vendor/tecnickcom/tcpdf/fonts/dejavu*.z
-vendor/tecnickcom/tcpdf/fonts/dejavu*.ctg.z
-vendor/tecnickcom/tcpdf/fonts/dejavu*.php
 vendor/tecnickcom/tcpdf/fonts/free*.z
 vendor/tecnickcom/tcpdf/fonts/free*.ctg.z
 vendor/tecnickcom/tcpdf/fonts/free*.php
 vendor/tecnickcom/tcpdf/fonts/pdf*.z
 vendor/tecnickcom/tcpdf/fonts/pdf*.ctg.z
 vendor/tecnickcom/tcpdf/fonts/pdf*.php
-vendor/tecnickcom/tcpdf/fonts/times*.php
 vendor/tecnickcom/tcpdf/fonts/uni2cid*.php
 vendor/tecnickcom/tcpdf/fonts/zapfdingbats.php
 vendor/tecnickcom/tcpdf/fonts/symbol.php
+# Keep only dejavusans variants (remove other dejavu families)
+vendor/tecnickcom/tcpdf/fonts/dejavuserif*
+vendor/tecnickcom/tcpdf/fonts/dejavusanscondensed*
+vendor/tecnickcom/tcpdf/fonts/dejavusansextralight*
+vendor/tecnickcom/tcpdf/fonts/dejavusansmono*
